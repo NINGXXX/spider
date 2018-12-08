@@ -1,0 +1,133 @@
+
+import requests
+from bs4 import BeautifulSoup
+import time
+import os
+import re
+import hashlib
+import base64
+
+#处理MD5编码问题 
+def handle_md5(hd_object):
+    return hashlib.md5(hd_object.encode('utf-8')).hexdigest()
+ 
+#处理base64编码问题
+def handle_base64(hd_object):
+	return str(base64.b64decode(hd_object))[2:-1] 
+
+#解密图片链接
+def parse(ig_hs, ct):
+    count = 4
+    contains = handle_md5(ct)
+    ig_hs_copy = ig_hs
+    p = handle_md5(contains[0:16])
+    m = ig_hs[0:count]
+    c = p + handle_md5(p + m)
+    n = ig_hs[count:]
+    l = handle_base64(n)
+    k = []
+    for h in range(256):
+        k.append(h)
+    b = []
+    for h in range(256):
+        b.append(ord(c[h % len(c)]))
+    g = 0
+    for h in range(256):
+        g = (g + k[h] + b[h]) % 256
+        tmp = k[h]
+        k[h] = k[g]
+        k[g] = tmp
+    u = ''
+    q = 0
+    z = 0
+    for h in range(len(l)):
+        q = (q + 1) % 256
+        z = (z + k[q]) % 256
+        tmp = k[q]
+        k[q] = k[z]
+        k[z] = tmp
+        u += chr(ord(l[h]) ^ (k[(k[q] + k[g]) % 256]))
+    u = u[26:]
+    u = handle_base64(ig_hs_copy)
+    return u
+
+def get_html(url):
+    proxies={'http':'111.23.10.27:8080'}
+    headers={'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'}
+    
+    try:
+        resp=requests.get(url,headers=headers)
+    except:
+        resp=requests.get(url,headers=headers,proxies=proxies)
+    return resp
+
+def get_imgs():
+    for url in all_page():
+        path=url.split('-')[-1]
+        mkdir(path)
+        imgurls=[]
+        html=get_html(url).text
+        soup=BeautifulSoup(html,'lxml')
+        imgs=soup.select('.img-hash')
+        arg='HpRB2OSft5RhlSyZaXV8xYpvEAgDThcA'
+        for img in imgs:
+           img_url=('http:'+parse(img.text,arg))
+           #print(img_url)
+           imgurls.append(img_url)
+        download(imgurls)
+    print('OK')
+
+
+def all_page():
+    base_url = 'http://jandan.net/ooxx/'
+    # BeautifulSoup解析页面得到最高页码数
+    soup = BeautifulSoup(get_html(base_url).text, 'lxml')
+    # 获得最高页码数
+    allpage = soup.find('span', class_="current-comment-page").get_text()[1:-1]
+    urllist = []
+    # for循环迭代出所有页面，得到url
+    for page in range(1, int(allpage)+1):
+        allurl = base_url + 'page-' + str(page)
+        urllist.append(allurl)
+    return urllist
+ 
+# 保存图片函数，传入的参数是一页所有图片url集合
+def download(list):
+    for urls in list:
+        if urls[0:5] == 'http:':
+            img_url = urls
+        else:
+            img_url = 'http:' + urls
+        filename = img_url.split('/')[-1]
+        # 保存图片
+        with open(filename, 'wb') as f:
+            # 直接过滤掉保存失败的图片，不终止程序
+            try:
+                f.write(get_html(img_url).content)
+                print('Sucessful image:',filename)
+            except:
+                print('Failed:',filename)
+
+
+#创建文件夹的函数
+def mkdir(path):
+    #os.path.exists(name)判断是否存在路径
+    #os.path.join(path,name)连接目录与文件名
+    isExists=os.path.exists(os.path.join("D:jiandan",path))
+    if not isExists:
+        print('makedir',path)
+        #创建文件夹
+        os.makedirs(os.path.join("D:/jiandan",path))
+        #切换到创建的文件夹
+        os.chdir(os.path.join("D:/jiandan",path))
+        return True
+    else:
+        print(path,'already exists')
+        return False
+ 
+if __name__ == '__main__':
+    # 计时
+    t1 = time.time()
+    # 调用函数
+    get_imgs()
+    print(time.time() - t1)
