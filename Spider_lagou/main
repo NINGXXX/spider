@@ -1,0 +1,22 @@
+import time
+from multiprocessing import Pool
+from html_parse import parse_html
+from spider_comments import parse_link
+
+def main(data):
+    url=data['url']
+    print(url)
+    Mongo_Table=data['name']
+    if Mongo_Table[0]=='.':
+        Mongo_Table=Mongo_Table[1:]
+    parse_link(url,Mongo_Table)
+
+if __name__=='__main__':         #多进程抓取
+    t1=time.time()
+    pool=Pool(processes=4)
+    datas=(data for data in  parse_html())
+    pool.map(main,datas)   #第二个参数是一个迭代器，但在实际使用中，必须在整个队列都就绪后，程序才会运行子进程。
+    pool.close()
+    pool.join()
+    print(time.time()-t1)
+
