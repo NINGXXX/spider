@@ -1,0 +1,30 @@
+
+import requests
+from bs4 import BeautifulSoup
+from requests.exceptions import  RequestException
+
+
+#获取页面源码
+def get_text(url):
+    headers={'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'}
+    try:
+        resp=requests.get(url,headers=headers)
+        if resp.status_code==200:
+            return resp.text
+        return None
+    except RequestException:
+        return None
+
+def parse_html():
+    url = 'https://www.lagou.com/'
+    soup=BeautifulSoup(get_text(url),'lxml')
+    all_positions=soup.select('div.menu_sub.dn > dl > dd > a')
+    job_urls=[i['href'] for i in all_positions]
+    job_names=[i.get_text() for i in all_positions]
+    for job_url,job_name in zip(job_urls,job_names):
+        data={
+            'url':job_url,
+            'name':job_name
+        }
+        yield  data
+
